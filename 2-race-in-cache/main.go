@@ -1,3 +1,11 @@
+// Personal comment:
+// this exercise is quite simple, but it shows that it can be really important to use 
+// a MUTEX to prevent multiple goroutines to read and/or write the same elements at the 
+// same time.
+// I was trying to use a more complicated approach with the RWMutex, but that did not work
+// simply because it could happen that when a routine was reading the map, another one could 
+// change the value at the same time
+
 //////////////////////////////////////////////////////////////////////
 //
 // Given is some code to cache key-value pairs from a database into
@@ -10,6 +18,7 @@ package main
 
 import (
 	"container/list"
+	"sync"
 	"testing"
 )
 
@@ -32,6 +41,7 @@ type KeyStoreCache struct {
 	cache map[string]*list.Element
 	pages list.List
 	load  func(string) string
+	mu    sync.Mutex
 }
 
 // New creates a new KeyStoreCache
@@ -44,7 +54,10 @@ func New(load KeyStoreCacheLoader) *KeyStoreCache {
 
 // Get gets the key from cache, loads it from the source if needed
 func (k *KeyStoreCache) Get(key string) string {
-	if e, ok := k.cache[key]; ok {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+
+	if e, ok := k.cache[key]; ok { // PROBLEMATIC LINE!!!
 		k.pages.MoveToFront(e)
 		return e.Value.(page).Value
 	}
@@ -54,12 +67,12 @@ func (k *KeyStoreCache) Get(key string) string {
 	if len(k.cache) >= CacheSize {
 		end := k.pages.Back()
 		// remove from map
-		delete(k.cache, end.Value.(page).Key)
+		delete(k.cache, end.Value.(page).Key) // PROBLEMATIC LINE!!!
 		// remove from list
-		k.pages.Remove(end)
+		k.pages.Remove(end) // PROBLEMATIC LINE!!!
 	}
-	k.pages.PushFront(p)
-	k.cache[key] = k.pages.Front()
+	k.pages.PushFront(p)           // PROBLEMATIC LINE!!!
+	k.cache[key] = k.pages.Front() // PROBLEMATIC LINE!!!
 	return p.Value
 }
 
