@@ -4,7 +4,7 @@
 // Your task is to edit `main.go`
 //
 
-package main
+package mockprocess
 
 import (
 	"fmt"
